@@ -1,2 +1,2 @@
 # Obstacle-avoiding
-Obstacle avoiding robot powered with arduino with 2 ultrasonic sensor
+Obstacle avoiding robot powered with arduino nano with 2 ultrasonic sensor
