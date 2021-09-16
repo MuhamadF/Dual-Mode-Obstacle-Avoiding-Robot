@@ -1,4 +1,4 @@
-# Dual-Mode-Obstacle-Avoiding-Robot
+# Dual Mode Obstacle Avoiding Robot
 Obstacle avoiding robot based on arduino nano with 2 ultrasonic sensor
 with bluetooth integration.
 
