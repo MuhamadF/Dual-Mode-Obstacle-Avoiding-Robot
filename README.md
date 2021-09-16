@@ -2,7 +2,7 @@
 Obstacle avoiding robot based on arduino nano with 2 ultrasonic sensor
 with bluetooth integration.
 
-# Library Used
+# Library
 - NewPing (for more optimal sensor readings)
 
 # Features
