@@ -2,6 +2,9 @@
 Obstacle avoiding robot based on arduino nano with 2 ultrasonic sensor
 with bluetooth integration.
 
+# Library Used
+- NewPing (for more optimal sensor readings)
+
 # Features
 User can select 2 mode.
 
@@ -9,5 +12,4 @@ User can select 2 mode.
 *note : the robot still pretty dumb though.
 
 - Manual Mode (user can control the robot manually via smartphone)
-*note : Mobile application still in development.
 
