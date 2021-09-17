@@ -4,6 +4,7 @@ with bluetooth integration.
 
 # Library
 - NewPing (for more optimal sensor readings)
+<a href="https://bitbucket.org/teckel12/arduino-new-ping/downloads/">NewPing library download page</a>
 
 # Features
 User can select 2 mode.
