@@ -1,12 +1,21 @@
 /************************************************
     Manual control and obstacle avoidance robot
     (c) Muhamad F 2021
+
+    Serial command
+     *  A = Auto Mode
+     *  S = Stop
+     *  F = Forward
+     *  B = Reverse
+     *  L = Left
+     *  R = Right
+     *  M = Manual Mode
+  
 *************************************************/
 
 #include <NewPing.h>
 
 // BOUNDARY
-#define MAX_SPEED 105
 #define MAX_DIST 100
 
 // SENSOR PIN 1
@@ -16,6 +25,9 @@ int trigPin1 = 9;
 // SENSOR PIN 2
 int echoPin2 = 5;
 int trigPin2 = 11; 
+
+// BUMPER PIN
+int bumperPin = 12;
 
 // MOTOR DRIVER PIN
 int majuKanan = 2;
@@ -28,7 +40,8 @@ int kananSpeed = 3 ;  //PWM
 int kiriSpeed = 10;  //PWM
 
 // MOVEMENT VARIABLE
-int speedSet = 0;
+int speedSet = 110;
+int bumperState;
 int countLeft = 0;
 int countRight = 0;
 int jarakL = 0;
@@ -54,6 +67,8 @@ void setup() {
   pinMode(trigPin2, OUTPUT);
   pinMode(echoPin2, INPUT); 
 
+  pinMode(bumperPin, INPUT_PULLUP);
+
  // SET PINMODE MOTOR
   pinMode(majuKanan, OUTPUT);
   pinMode(majuKiri, OUTPUT);
@@ -63,9 +78,8 @@ void setup() {
   pinMode(kananSpeed, OUTPUT);
   pinMode(kiriSpeed, OUTPUT);
 
-  // DEFAULT ROBOT STATE = OBSTACLE AVOID MODE
-  btData = 'A';
-
+  InitialMark();
+  
   // SERIAL FOR BLUETOOTH READINGS
   Serial.begin(9600);
 }
@@ -74,18 +88,25 @@ void setup() {
     BASIC MOVEMENT
 ***************************************/
 
+void InitialMark() {
+  analogWrite(kiriSpeed, 60);
+  analogWrite(kananSpeed, 60);
+
+  Mundur(50);
+  Berhenti(50);
+  Mundur(50);
+  Berhenti(50);
+}
+
 // FORWARD
 void Maju() {
     digitalWrite(majuKanan, HIGH);
     digitalWrite(majuKiri, HIGH);
     digitalWrite(mundurKanan, LOW);
     digitalWrite(mundurKiri, LOW);
-
-  // speed control for battery saving (experimental)
-   for (speedSet = 0; speedSet < MAX_SPEED; speedSet +=2) {
-     analogWrite(kiriSpeed, MAX_SPEED);
-     analogWrite(kananSpeed, MAX_SPEED);
-    }
+    
+    analogWrite(kiriSpeed, speedSet);
+    analogWrite(kananSpeed, speedSet);
 }
 
 //  BACKWARD
@@ -95,13 +116,10 @@ void Mundur(int d) {
     digitalWrite(mundurKanan, HIGH);
     digitalWrite(mundurKiri, HIGH);
 
-  // speed control for battery saving (experimental)
-  for (speedSet = 0; speedSet < MAX_SPEED; speedSet +=2) {
-    analogWrite(kiriSpeed, MAX_SPEED);
-    analogWrite(kananSpeed, MAX_SPEED);
-   }
-  delay(d);
-   
+    analogWrite(kiriSpeed, speedSet);
+    analogWrite(kananSpeed, speedSet);
+
+    delay(d);
 }
 
 // LEFT
@@ -110,6 +128,9 @@ void Kiri(int d) {
   digitalWrite(majuKiri, LOW);
   digitalWrite(mundurKanan, LOW);
   digitalWrite(mundurKiri, HIGH);
+  
+  analogWrite(kiriSpeed, speedSet);
+  analogWrite(kananSpeed, speedSet);
 
   delay(d);
 }
@@ -120,6 +141,9 @@ void Kanan(int d) {
   digitalWrite(majuKiri, HIGH);
   digitalWrite(mundurKanan, HIGH);
   digitalWrite(mundurKiri, LOW);
+
+  analogWrite(kiriSpeed, speedSet);
+  analogWrite(kananSpeed, speedSet);
   
   delay(d);
 }
@@ -165,7 +189,8 @@ void ObstacleAvoidMode() {
     if(btData == 'M'){
       ManualMode();
     }
-    
+
+    bumperState = digitalRead(bumperPin);
     jarakK = readPing(sonar1);
     jarakL = readPing(sonar2);
     // IF THE ROBOT STUCK IN A CORNER
@@ -189,7 +214,7 @@ void ObstacleAvoidMode() {
     // STOP WHEN ONE SENSOR RETURNS <= 5CM
     // COMPARE 2 SENSOR READINGS, TURN THE ROBOT 
     //BASED FROM HIGHEST SENSOR VALUE
-    if(jarakK <= 5 || jarakL <= 5) {
+    if(jarakK <= 5 || jarakL <= 5 || bumperState == LOW) {
        Mundur(200);
        Berhenti(200);
       if(jarakK < jarakL) {
