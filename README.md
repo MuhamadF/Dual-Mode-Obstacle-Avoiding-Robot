@@ -1,5 +1,5 @@
 # Dual Mode Obstacle Avoiding Robot
-Obstacle avoiding robot based on arduino nano with 2 ultrasonic sensor
+Obstacle avoiding robot based on arduino nano with 2 ultrasonic sensor and bumper
 with bluetooth integration.
 
 # Library
