@@ -1,62 +1,45 @@
-/************************************************
-    Manual control and obstacle avoidance robot
-    (c) Muhamad F 2021
-
-    Serial command
-     *  A = Auto Mode
-     *  S = Stop
-     *  F = Forward
-     *  B = Reverse
-     *  L = Left
-     *  R = Right
-     *  M = Manual Mode
-  
-*************************************************/
-
 #include <NewPing.h>
+#include <SoftwareSerial.h>
 
 // BOUNDARY
 #define MAX_DIST 100
+#define MIN_DIST 15
 
 // SENSOR PIN 1
-int echoPin1 = 6;
-int trigPin1 = 9; 
-
-// SENSOR PIN 2
-int echoPin2 = 5;
-int trigPin2 = 11; 
+int echoPin1 = 10;  // PWM
+int trigPin1 = 11; 
 
 // BUMPER PIN
-int bumperPin = 12;
+int bumperPin = 2;
+
+// BLUETOOTH PIN VIA SOFTWARE SERIAL
+SoftwareSerial bt(12, 13); // RX / TX
 
 // MOTOR DRIVER PIN
-int majuKanan = 2;
-int mundurKanan = 4; 
-int majuKiri = 7;
-int mundurKiri  = 8;
+int majuKanan = 8;
+int mundurKanan = 7; 
+int majuKiri = 4;
+int mundurKiri  = 3;
 
 // SPEEDCONTROL PIN
-int kananSpeed = 3 ;  //PWM
-int kiriSpeed = 10;  //PWM
+int kananSpeed = 5 ;  //PWM
+int kiriSpeed = 6;  //PWM
+int brushSpeed = 9; // PWM
 
-// MOVEMENT VARIABLE
-int speedSet = 110;
+// MOVESET & SENSOR VARIABLE
+int speedSet = 114;
 int bumperState;
-int countLeft = 0;
-int countRight = 0;
+int jarakD = 0;
 int jarakL = 0;
-int jarakK = 0;
+int jarakR = 0;
+int dirStatus = 0;
 
 // BLUETOOTH VARIABLE
-char btData;
+char btData = 'A';
 
 // ULTRASONIC SENSOR LIBRARY DECLARATION
 NewPing sonar1(trigPin1, echoPin1, MAX_DIST);
-NewPing sonar2 (trigPin2, echoPin2, MAX_DIST);
 
-/***************************************
-    SETUP FUNCTION
-***************************************/
 
 void setup() {
 
@@ -64,9 +47,7 @@ void setup() {
   pinMode(trigPin1, OUTPUT);
   pinMode(echoPin1, INPUT); 
 
-  pinMode(trigPin2, OUTPUT);
-  pinMode(echoPin2, INPUT); 
-
+ // SET PINMODE BUMPER
   pinMode(bumperPin, INPUT_PULLUP);
 
  // SET PINMODE MOTOR
@@ -77,16 +58,14 @@ void setup() {
   
   pinMode(kananSpeed, OUTPUT);
   pinMode(kiriSpeed, OUTPUT);
+  pinMode(brushSpeed, OUTPUT);
 
   InitialMark();
   
   // SERIAL FOR BLUETOOTH READINGS
   Serial.begin(9600);
+  bt.begin(9600);
 }
-
-/***************************************
-    BASIC MOVEMENT
-***************************************/
 
 void InitialMark() {
   analogWrite(kiriSpeed, 60);
@@ -99,158 +78,141 @@ void InitialMark() {
 }
 
 // FORWARD
-void Maju() {
-    digitalWrite(majuKanan, HIGH);
-    digitalWrite(majuKiri, HIGH);
-    digitalWrite(mundurKanan, LOW);
-    digitalWrite(mundurKiri, LOW);
-    
-    analogWrite(kiriSpeed, speedSet);
-    analogWrite(kananSpeed, speedSet);
-}
-
-//  BACKWARD
-void Mundur(int d) {
+void Maju(int s) {
     digitalWrite(majuKanan, LOW);
     digitalWrite(majuKiri, LOW);
     digitalWrite(mundurKanan, HIGH);
     digitalWrite(mundurKiri, HIGH);
 
-    analogWrite(kiriSpeed, speedSet);
-    analogWrite(kananSpeed, speedSet);
+    analogWrite(kiriSpeed, s+10);
+    analogWrite(kananSpeed, s);
+}
 
+//  BACKWARD
+void Mundur(int d) {
+    digitalWrite(majuKanan, HIGH);
+    digitalWrite(majuKiri, HIGH);
+    digitalWrite(mundurKanan, LOW);
+    digitalWrite(mundurKiri, LOW);
+
+    analogWrite(kiriSpeed, speedSet+10);
+    analogWrite(kananSpeed, speedSet);
     delay(d);
 }
 
 // LEFT
 void Kiri(int d) {
-  digitalWrite(majuKanan, HIGH);
-  digitalWrite(majuKiri, LOW);
-  digitalWrite(mundurKanan, LOW);
-  digitalWrite(mundurKiri, HIGH);
-  
-  analogWrite(kiriSpeed, speedSet);
-  analogWrite(kananSpeed, speedSet);
+    digitalWrite(majuKanan, HIGH);
+    digitalWrite(majuKiri, LOW);
+    digitalWrite(mundurKanan, LOW);
+    digitalWrite(mundurKiri, HIGH);
 
-  delay(d);
+    analogWrite(kiriSpeed, speedSet+10);
+    analogWrite(kananSpeed, speedSet);
+    
+    delay(d);
 }
 
 // RIGHT
 void Kanan(int d) {
-  digitalWrite(majuKanan, LOW);
-  digitalWrite(majuKiri, HIGH);
-  digitalWrite(mundurKanan, HIGH);
-  digitalWrite(mundurKiri, LOW);
+    digitalWrite(majuKanan, LOW);
+    digitalWrite(majuKiri, HIGH);
+    digitalWrite(mundurKanan, HIGH);
+    digitalWrite(mundurKiri, LOW);
 
-  analogWrite(kiriSpeed, speedSet);
-  analogWrite(kananSpeed, speedSet);
+    analogWrite(kiriSpeed, speedSet+10);
+    analogWrite(kananSpeed, speedSet);
   
-  delay(d);
+    delay(d);
 }
 
 // STOP
 void Berhenti(int d) {
-  digitalWrite(majuKanan, LOW);
-  digitalWrite(majuKiri, LOW);
-  digitalWrite(mundurKanan, LOW);
-  digitalWrite(mundurKiri, LOW);
-
-  delay(d);
+    digitalWrite(majuKanan, LOW);
+    digitalWrite(majuKiri, LOW);
+    digitalWrite(mundurKanan, LOW);
+    digitalWrite(mundurKiri, LOW);
+  
+    delay(d);
 }
 
-/***************************************
-    SENSOR FUNCTION
-***************************************/
-
-// measuring distance using sensor
+// ULTRASONIC MEASURING FUNCTION
 int readPing(NewPing namaSonar) { 
   int cm = namaSonar.ping_cm();
-  if(cm==0)
+  if(cm <= 0)
   {
-    cm = 1000;
+    cm = 30;
   }
   return cm;
 }
 
-/***************************************
-    MODE FUNCTION
-***************************************/
-
-// obstacle avoidance mode
-void ObstacleAvoidMode() {
+// OBSTACLE AVOIDANCE MODE (DUMB)
+void RandomMode() {
   Berhenti(300);
   
-  while(1) {
+ while(1) {
 
-    //WHEN 'M' RECEIVED, SWITCH TO MANUAL MODE
-    if(Serial.available() > 0) {
-    btData = Serial.read();
+    if(bt.available() > 0) {
+    btData = bt.read();
     }
     if(btData == 'M'){
       ManualMode();
     }
 
+    analogWrite(brushSpeed,40);
+    jarakD = readPing(sonar1);
     bumperState = digitalRead(bumperPin);
-    jarakK = readPing(sonar1);
-    jarakL = readPing(sonar2);
-    // IF THE ROBOT STUCK IN A CORNER
-    // MOVE BACKWARD AFTER 2 TURN
-    // READ SENSOR AGAIN, THEN TURN 
-    // BASED FROM HIGHEST SENSOR VALUE
-    if(countRight == 2 || countLeft == 2) {
-       Mundur(700);
-       jarakK = readPing(sonar1);
-       jarakL = readPing(sonar2);
-       Berhenti(150);
-       if(jarakK < jarakL) {
-          Kiri(400);
-        } else {
-          Kanan(400);
-        }
-       Berhenti(90);
-       countRight = 0;
-       countLeft = 0;
+
+    if(jarakD < 30) {
+      Maju(95);
     }
-    // STOP WHEN ONE SENSOR RETURNS <= 5CM
-    // COMPARE 2 SENSOR READINGS, TURN THE ROBOT 
-    //BASED FROM HIGHEST SENSOR VALUE
-    if(jarakK <= 5 || jarakL <= 5 || bumperState == LOW) {
-       Mundur(200);
-       Berhenti(200);
-      if(jarakK < jarakL) {
-        Kiri(400);
-        countLeft++;
-      } else {
-        Kanan(400);
-        countRight++;
+    
+    if(jarakD < MIN_DIST || bumperState == LOW) {
+      Berhenti(100);
+      Mundur(400);
+      Berhenti(200);
+      jarakR = readPing(sonar1);
+      delay(100);
+      jarakL = readPing(sonar1);
+      delay(100);
+
+      if(jarakL > jarakR) {
+        Kanan(random(250, 450));
+        Berhenti(200);
       }
-      Berhenti(90);
+      if(jarakL <= jarakR) {
+        Kiri(random(250, 450));
+        Berhenti(200);
+      }
+      if(jarakL < 10 && jarakR < 10) {
+        Mundur(400);
+        Berhenti(200);
+      }
     } else {
-      Maju();
-      countLeft = 0;
-      countRight = 0;
+      Maju(114);
     }
   }
 }
 
-// manual control mode
+// MANUAL MODE (SMARTPHONE)
 void ManualMode() {
   Berhenti(300);
   
   while(1) {
 
-    // WHEN 'A' RECEIVED, SWITCH TO AUTONOMOUS MODE
-    if(Serial.available() > 0) {
-    btData = Serial.read();
+    analogWrite(brushSpeed,40);
+
+    if(bt.available() > 0) {
+    btData = bt.read();
     }
-    if(btData == 'A'){
-      ObstacleAvoidMode();
-    }
+     if(btData == 'A'){
+        RandomMode();
+     }
      if(btData == 'S') {
           Berhenti(1);
      }
      if(btData == 'F') {
-          Maju();
+          Maju(112);
      }
      if(btData == 'B') { 
           Mundur(1);
@@ -264,13 +226,9 @@ void ManualMode() {
   }
 }
 
-/***************************************
-    LOOP FUNCTION
-***************************************/
-
 void loop() {
-  if(Serial.available() > 0) {
-    btData = Serial.read();
+  if(bt.available() > 0) {
+    btData = bt.read();
   }
 
   switch(btData) {
@@ -278,7 +236,7 @@ void loop() {
       ManualMode();
       break;
     case 'A' :
-      ObstacleAvoidMode();
+      RandomMode();
       break;
     default :
       return;
